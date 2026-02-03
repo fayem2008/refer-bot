@@ -23,7 +23,7 @@ function saveDB() {
 
 /* ================= CONFIG ================= */
 
-const ADMIN_ID = 123456789; // 👉 এখানে নিজের Telegram ID বসাবে
+const ADMIN_ID = 8480989043; // 👉 এখানে নিজের Telegram ID বসাবে
 const REFER_BONUS = 5; // প্রতি refer এ 5৳
 const MIN_WITHDRAW = 20;
 
