@@ -1,151 +1,167 @@
+/**
+ * Paid Course SaaS Bot (JSON Version)
+ * MongoDB ছাড়া – Beginner & Production Starter
+ */
+
 import TelegramBot from "node-telegram-bot-api";
 import fs from "fs";
 import express from "express";
 
-/* ================= BASIC SETUP ================= */
+/* ================= BASIC ================= */
 
-const bot = new TelegramBot(process.env.BOT_TOKEN, { polling: true });
+const BOT_TOKEN = process.env.BOT_TOKEN;
+const ADMIN_ID = Number(process.env.ADMIN_ID);
+
+const bot = new TelegramBot(BOT_TOKEN, { polling: true });
 
 const app = express();
-app.get("/", (req, res) => res.send("Bot Alive 🚀"));
+app.get("/", (req, res) => res.send("Paid Course Bot Alive 🚀"));
 app.listen(process.env.PORT || 3000);
 
-/* ================= DATABASE ================= */
+/* ================= DATABASE (JSON) ================= */
 
-const DB_FILE = "./users.json";
-let users = fs.existsSync(DB_FILE)
-  ? JSON.parse(fs.readFileSync(DB_FILE))
+const USERS_DB = "./users.json";
+const PAY_DB = "./payments.json";
+
+let users = fs.existsSync(USERS_DB)
+  ? JSON.parse(fs.readFileSync(USERS_DB))
   : {};
 
-function saveDB() {
-  fs.writeFileSync(DB_FILE, JSON.stringify(users, null, 2));
+let payments = fs.existsSync(PAY_DB)
+  ? JSON.parse(fs.readFileSync(PAY_DB))
+  : [];
+
+function saveUsers() {
+  fs.writeFileSync(USERS_DB, JSON.stringify(users, null, 2));
 }
 
-/* ================= CONFIG ================= */
-
-const ADMIN_ID = 8480989043; // 👉 এখানে নিজের Telegram ID বসাবে
-const REFER_BONUS = 5; // প্রতি refer এ 5৳
-const MIN_WITHDRAW = 20;
+function savePayments() {
+  fs.writeFileSync(PAY_DB, JSON.stringify(payments, null, 2));
+}
 
 /* ================= KEYBOARD ================= */
 
 const mainKeyboard = {
   reply_markup: {
     keyboard: [
-      ["🔗 Refer & Earn", "💰 Balance"],
-      ["💸 Withdraw", "📢 Rules"],
+      ["📚 Courses", "🧾 My Courses"],
+      ["💳 Buy Course"],
       ["🆘 Help"]
     ],
     resize_keyboard: true
   }
 };
 
-/* ================= START COMMAND ================= */
+/* ================= START ================= */
 
-bot.onText(/\/start(?:\s+(\d+))?/, (msg, match) => {
+bot.onText(/\/start/, (msg) => {
   const id = msg.from.id;
-  const ref = match[1];
 
   if (!users[id]) {
     users[id] = {
-      referrals: 0,
-      balance: 0
+      id,
+      name: msg.from.first_name,
+      role: id === ADMIN_ID ? "admin" : "user",
+      courses: []
     };
-
-    if (ref && ref !== String(id) && users[ref]) {
-      users[ref].referrals += 1;
-      users[ref].balance += REFER_BONUS;
-      bot.sendMessage(
-        ref,
-        `🎉 New Referral!\n💰 +${REFER_BONUS}৳ added`
-      );
-    }
-    saveDB();
+    saveUsers();
   }
 
   bot.sendMessage(
     id,
-    `👋 Welcome ${msg.from.first_name}!\n\n🎁 Refer friends & earn money!\n\n⬇️ Use buttons below`,
+    `👋 Welcome ${users[id].name}!\n\n🎓 Paid Course Platform\n\n⬇️ Use menu below`,
     mainKeyboard
   );
 });
 
-/* ================= BUTTON HANDLER ================= */
+/* ================= MENU HANDLER ================= */
 
 bot.on("message", (msg) => {
   const text = msg.text;
   const id = msg.from.id;
+  const user = users[id];
+  if (!user) return;
 
-  if (!users[id]) return;
-
-  /* REFER */
-  if (text === "🔗 Refer & Earn") {
-    const link = `https://t.me/${process.env.BOT_USERNAME}?start=${id}`;
+  // COURSES
+  if (text === "📚 Courses") {
     bot.sendMessage(
       id,
-      `🔗 Your Referral Link:\n${link}\n\n🎁 Earn ${REFER_BONUS}৳ per refer`
+      "📚 Available Courses:\n\n🔒 JavaScript Basics\n🔒 Node.js Mastery\n\n💳 Buy course to unlock"
     );
   }
 
-  /* BALANCE */
-  if (text === "💰 Balance") {
-    bot.sendMessage(
-      id,
-      `💰 Balance: ${users[id].balance}৳\n👥 Referrals: ${users[id].referrals}`
-    );
-  }
-
-  /* WITHDRAW */
-  if (text === "💸 Withdraw") {
-    if (users[id].balance < MIN_WITHDRAW) {
-      bot.sendMessage(
-        id,
-        `❌ Minimum withdraw ${MIN_WITHDRAW}৳`
-      );
+  // MY COURSES
+  if (text === "🧾 My Courses") {
+    if (user.courses.length === 0) {
+      bot.sendMessage(id, "🧾 You have no unlocked courses.");
     } else {
       bot.sendMessage(
         id,
-        `💸 Withdraw Request\n\nSend like this:\n\nBkash 01XXXXXXXXX\nor\nNagad 01XXXXXXXXX`
+        `🧾 Your Courses:\n\n${user.courses.join("\n")}`
       );
     }
   }
 
-  /* RULES */
-  if (text === "📢 Rules") {
+  // BUY COURSE
+  if (text === "💳 Buy Course") {
     bot.sendMessage(
       id,
-      `📢 Rules:\n\n✔️ One account per user\n✔️ Fake refer banned\n✔️ Minimum withdraw ${MIN_WITHDRAW}৳`
+      "💳 Send payment info:\n\nBkash / Nagad\nExample:\nBkash 01XXXXXXXXX JavaScript"
     );
   }
 
-  /* HELP */
+  // HELP
   if (text === "🆘 Help") {
     bot.sendMessage(
       id,
-      `🆘 Support:\n\n⏳ Withdraw time: 24 hours\n📩 Contact admin if needed`
+      "🆘 Help\n\n📩 Contact Admin\n⏳ Course unlock after payment approval"
     );
   }
 
-  /* WITHDRAW REQUEST FORMAT */
-  if (text.startsWith("Bkash") || text.startsWith("Nagad")) {
+  // PAYMENT MESSAGE
+  if (
+    text.startsWith("Bkash") ||
+    text.startsWith("Nagad")
+  ) {
+    payments.push({
+      userId: id,
+      message: text,
+      status: "pending"
+    });
+    savePayments();
+
+    bot.sendMessage(id, "✅ Payment request sent. Please wait.");
+
     bot.sendMessage(
       ADMIN_ID,
-      `💸 Withdraw Request\n\nUser: ${id}\nMessage: ${text}\nBalance: ${users[id].balance}৳`
-    );
-    bot.sendMessage(
-      id,
-      "✅ Withdraw request sent. Please wait."
+      `💳 New Payment Request\n\nUser: ${id}\nMessage: ${text}`
     );
   }
 });
 
-/* ================= ADMIN BROADCAST ================= */
+/* ================= ADMIN COMMANDS ================= */
 
+// BROADCAST
 bot.onText(/\/broadcast (.+)/, (msg, match) => {
   if (msg.from.id !== ADMIN_ID) return;
 
   const message = match[1];
   Object.keys(users).forEach((uid) => {
-    bot.sendMessage(uid, `📢 Broadcast:\n\n${message}`);
+    bot.sendMessage(uid, `📢 Announcement:\n\n${message}`);
   });
+});
+
+// UNLOCK COURSE
+bot.onText(/\/unlock (\d+) (.+)/, (msg, match) => {
+  if (msg.from.id !== ADMIN_ID) return;
+
+  const userId = match[1];
+  const course = match[2];
+
+  if (users[userId]) {
+    users[userId].courses.push(course);
+    saveUsers();
+    bot.sendMessage(userId, `🎉 Course Unlocked: ${course}`);
+    bot.sendMessage(ADMIN_ID, "✅ Course unlocked successfully");
+  }
 });
