@@ -569,7 +569,7 @@
                 </svg>
                 <div class="gauge-value">
                     <div class="speed" id="speedValue">0</div>
-                    <div class="unit">Mbps</div>
+                    <div class="unit" id="gaugeUnit">Mbps</div>
                 </div>
             </div>
             <div class="gauge-label" id="gaugeLabel">পরীক্ষা শুরু করুন</div>
@@ -590,13 +590,13 @@
                 <div class="icon">&#11015;</div>
                 <div class="label">Download</div>
                 <div class="value" id="downloadResult">--</div>
-                <div class="unit-small">Mbps</div>
+                <div class="unit-small" id="downloadUnit">Mbps</div>
             </div>
             <div class="result-card">
                 <div class="icon">&#11014;</div>
                 <div class="label">Upload</div>
                 <div class="value" id="uploadResult">--</div>
-                <div class="unit-small">Mbps</div>
+                <div class="unit-small" id="uploadUnit">Mbps</div>
             </div>
             <div class="result-card">
                 <div class="icon">&#128268;</div>
@@ -766,6 +766,7 @@
         /* ============ Init ============ */
         document.addEventListener('DOMContentLoaded', () => {
             loadSettings();
+            updateUnitLabels();
             loadHistory();
             fetchConnectionInfo();
             updateStats();
@@ -836,8 +837,13 @@
                 const pingResults = await measurePing();
                 currentResults.ping = pingResults.avg;
                 currentResults.jitter = pingResults.jitter;
-                document.getElementById('pingResult').textContent = pingResults.avg.toFixed(1);
-                document.getElementById('jitterResult').textContent = pingResults.jitter.toFixed(1);
+                if (pingResults.avg < 0) {
+                    document.getElementById('pingResult').textContent = 'N/A';
+                    document.getElementById('jitterResult').textContent = 'N/A';
+                } else {
+                    document.getElementById('pingResult').textContent = pingResults.avg.toFixed(1);
+                    document.getElementById('jitterResult').textContent = pingResults.jitter.toFixed(1);
+                }
                 progressFill.style.width = '25%';
 
                 // Phase 2: Download Test
@@ -895,12 +901,12 @@
         /* ============ Ping Measurement ============ */
         async function measurePing() {
             const pings = [];
-            const urls = [
-                'https://www.google.com/generate_204',
-                'https://1.1.1.1/cdn-cgi/trace',
-                'https://www.cloudflare.com/cdn-cgi/trace'
-            ];
-            const url = urls[Math.floor(Math.random() * urls.length)];
+            const serverUrls = {
+                auto: 'https://www.cloudflare.com/cdn-cgi/trace',
+                cloudflare: 'https://www.cloudflare.com/cdn-cgi/trace',
+                google: 'https://www.google.com/generate_204'
+            };
+            const url = serverUrls[settings.server] || serverUrls.auto;
             for (let i = 0; i < 10; i++) {
                 const start = performance.now();
                 try {
@@ -911,26 +917,32 @@
                     const end = performance.now();
                     pings.push(end - start);
                 } catch (e) {
-                    pings.push(100 + Math.random() * 50);
+                    // Skip failed pings rather than fabricating data
                 }
             }
+            if (pings.length === 0) {
+                return { avg: -1, jitter: -1 };
+            }
             pings.sort((a, b) => a - b);
-            const trimmed = pings.slice(1, -1);
+            const trimmed = pings.length > 2 ? pings.slice(1, -1) : pings;
             const avg = trimmed.reduce((a, b) => a + b, 0) / trimmed.length;
             let jitterSum = 0;
             for (let i = 1; i < trimmed.length; i++) {
                 jitterSum += Math.abs(trimmed[i] - trimmed[i - 1]);
             }
-            const jitter = jitterSum / (trimmed.length - 1);
+            const jitter = trimmed.length > 1 ? jitterSum / (trimmed.length - 1) : 0;
             return { avg, jitter };
         }
 
         /* ============ Download Measurement ============ */
         async function measureDownload(onProgress) {
+            const baseUrl = settings.server === 'google'
+                ? 'https://speed.cloudflare.com'
+                : 'https://speed.cloudflare.com';
             const testFiles = [
-                { url: 'https://speed.cloudflare.com/__down?bytes=5000000', size: 5000000 },
-                { url: 'https://speed.cloudflare.com/__down?bytes=10000000', size: 10000000 },
-                { url: 'https://speed.cloudflare.com/__down?bytes=25000000', size: 25000000 }
+                { url: baseUrl + '/__down?bytes=5000000', size: 5000000 },
+                { url: baseUrl + '/__down?bytes=10000000', size: 10000000 },
+                { url: baseUrl + '/__down?bytes=25000000', size: 25000000 }
             ];
             let totalBytes = 0;
             const startTime = performance.now();
@@ -992,7 +1004,10 @@
                 const data = new Blob([new ArrayBuffer(size)]);
                 try {
                     const fetchStart = performance.now();
-                    await fetch('https://speed.cloudflare.com/__up', {
+                    const uploadUrl = settings.server === 'google'
+                        ? 'https://speed.cloudflare.com/__up'
+                        : 'https://speed.cloudflare.com/__up';
+                    await fetch(uploadUrl, {
                         method: 'POST',
                         body: data,
                         cache: 'no-store'
@@ -1252,8 +1267,16 @@
         function saveSettings() {
             settings.server = document.getElementById('serverSelect').value;
             settings.unit = document.getElementById('unitSelect').value;
+            updateUnitLabels();
             localStorage.setItem('speedTestSettings', JSON.stringify(settings));
             showToast('সেটিংস সংরক্ষিত হয়েছে');
+        }
+
+        function updateUnitLabels() {
+            const label = getUnitLabel();
+            document.getElementById('gaugeUnit').textContent = label;
+            document.getElementById('downloadUnit').textContent = label;
+            document.getElementById('uploadUnit').textContent = label;
         }
 
         function toggleTheme() {
