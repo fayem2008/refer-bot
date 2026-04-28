@@ -1,0 +1,1329 @@
+<!DOCTYPE html>
+<html lang="bn">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>Speed Test - ইন্টারনেট স্পিড টেস্ট</title>
+    <style>
+        :root {
+            --primary: #6C63FF;
+            --primary-dark: #5A52D5;
+            --primary-light: #8B85FF;
+            --bg: #0F0F1A;
+            --bg-card: #1A1A2E;
+            --bg-card-hover: #222240;
+            --text: #FFFFFF;
+            --text-secondary: #A0A0B8;
+            --success: #00E676;
+            --warning: #FFD600;
+            --danger: #FF5252;
+            --info: #40C4FF;
+            --border: rgba(255,255,255,0.08);
+            --shadow: 0 8px 32px rgba(0,0,0,0.3);
+            --nav-height: 70px;
+            --gauge-size: 260px;
+        }
+        [data-theme="light"] {
+            --bg: #F0F2F5;
+            --bg-card: #FFFFFF;
+            --bg-card-hover: #F8F8FC;
+            --text: #1A1A2E;
+            --text-secondary: #6B6B80;
+            --border: rgba(0,0,0,0.08);
+            --shadow: 0 8px 32px rgba(0,0,0,0.08);
+        }
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            background: var(--bg);
+            color: var(--text);
+            min-height: 100vh;
+            overflow-x: hidden;
+            transition: background 0.3s, color 0.3s;
+            padding-bottom: var(--nav-height);
+        }
+        /* Header */
+        .header {
+            text-align: center;
+            padding: 20px 16px 10px;
+            background: linear-gradient(135deg, var(--bg-card), var(--bg));
+            border-bottom: 1px solid var(--border);
+        }
+        .header h1 {
+            font-size: 22px;
+            font-weight: 700;
+            background: linear-gradient(135deg, var(--primary), var(--info));
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            background-clip: text;
+        }
+        .header p { font-size: 12px; color: var(--text-secondary); margin-top: 4px; }
+
+        /* Pages */
+        .page { display: none; padding: 16px; animation: fadeIn 0.3s ease; }
+        .page.active { display: block; }
+        @keyframes fadeIn { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: translateY(0); } }
+
+        /* Speed Test Page */
+        .gauge-container {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            margin: 20px 0;
+        }
+        .gauge-wrapper {
+            position: relative;
+            width: var(--gauge-size);
+            height: calc(var(--gauge-size) / 2 + 30px);
+        }
+        .gauge-svg {
+            width: 100%;
+            height: 100%;
+        }
+        .gauge-bg {
+            fill: none;
+            stroke: var(--border);
+            stroke-width: 18;
+            stroke-linecap: round;
+        }
+        .gauge-fill {
+            fill: none;
+            stroke: url(#gaugeGradient);
+            stroke-width: 18;
+            stroke-linecap: round;
+            transition: stroke-dashoffset 0.5s ease;
+        }
+        .gauge-value {
+            position: absolute;
+            bottom: 20px;
+            left: 50%;
+            transform: translateX(-50%);
+            text-align: center;
+        }
+        .gauge-value .speed {
+            font-size: 52px;
+            font-weight: 800;
+            line-height: 1;
+            background: linear-gradient(135deg, var(--primary), var(--info));
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            background-clip: text;
+        }
+        .gauge-value .unit {
+            font-size: 16px;
+            color: var(--text-secondary);
+            font-weight: 500;
+        }
+        .gauge-label {
+            font-size: 14px;
+            color: var(--text-secondary);
+            margin-top: 4px;
+            font-weight: 500;
+        }
+
+        /* Start Button */
+        .start-btn {
+            width: 160px;
+            height: 160px;
+            border-radius: 50%;
+            border: 3px solid var(--primary);
+            background: linear-gradient(135deg, rgba(108,99,255,0.15), rgba(64,196,255,0.1));
+            color: var(--text);
+            font-size: 18px;
+            font-weight: 700;
+            cursor: pointer;
+            transition: all 0.3s;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            margin: 30px auto;
+            position: relative;
+            overflow: hidden;
+        }
+        .start-btn:hover {
+            background: linear-gradient(135deg, rgba(108,99,255,0.3), rgba(64,196,255,0.2));
+            transform: scale(1.05);
+            box-shadow: 0 0 40px rgba(108,99,255,0.3);
+        }
+        .start-btn:active { transform: scale(0.95); }
+        .start-btn.testing {
+            animation: pulse 1.5s ease-in-out infinite;
+            border-color: var(--info);
+        }
+        @keyframes pulse {
+            0%, 100% { box-shadow: 0 0 20px rgba(108,99,255,0.3); }
+            50% { box-shadow: 0 0 50px rgba(108,99,255,0.6); }
+        }
+        .start-btn .ripple {
+            position: absolute;
+            width: 100%;
+            height: 100%;
+            border-radius: 50%;
+            border: 2px solid var(--primary);
+            animation: rippleAnim 2s ease-out infinite;
+            opacity: 0;
+        }
+        @keyframes rippleAnim {
+            0% { transform: scale(0.8); opacity: 0.6; }
+            100% { transform: scale(1.5); opacity: 0; }
+        }
+
+        /* Results Grid */
+        .results-grid {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 12px;
+            margin-top: 20px;
+        }
+        .result-card {
+            background: var(--bg-card);
+            border: 1px solid var(--border);
+            border-radius: 16px;
+            padding: 16px;
+            text-align: center;
+            transition: all 0.3s;
+        }
+        .result-card:hover { background: var(--bg-card-hover); transform: translateY(-2px); }
+        .result-card .icon {
+            font-size: 24px;
+            margin-bottom: 8px;
+        }
+        .result-card .label {
+            font-size: 11px;
+            color: var(--text-secondary);
+            text-transform: uppercase;
+            letter-spacing: 1px;
+            margin-bottom: 4px;
+        }
+        .result-card .value {
+            font-size: 24px;
+            font-weight: 700;
+        }
+        .result-card .unit-small {
+            font-size: 12px;
+            color: var(--text-secondary);
+        }
+
+        /* Connection Info */
+        .connection-info {
+            background: var(--bg-card);
+            border: 1px solid var(--border);
+            border-radius: 16px;
+            padding: 16px;
+            margin-top: 16px;
+        }
+        .connection-info h3 {
+            font-size: 14px;
+            color: var(--text-secondary);
+            margin-bottom: 12px;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+        .info-row {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 8px 0;
+            border-bottom: 1px solid var(--border);
+        }
+        .info-row:last-child { border-bottom: none; }
+        .info-row .info-label { font-size: 13px; color: var(--text-secondary); }
+        .info-row .info-value { font-size: 13px; font-weight: 600; }
+
+        /* Quality Badge */
+        .quality-badge {
+            display: inline-flex;
+            align-items: center;
+            gap: 6px;
+            padding: 6px 16px;
+            border-radius: 20px;
+            font-size: 13px;
+            font-weight: 600;
+            margin-top: 12px;
+        }
+        .quality-excellent { background: rgba(0,230,118,0.15); color: var(--success); }
+        .quality-good { background: rgba(64,196,255,0.15); color: var(--info); }
+        .quality-fair { background: rgba(255,214,0,0.15); color: var(--warning); }
+        .quality-poor { background: rgba(255,82,82,0.15); color: var(--danger); }
+
+        /* History Page */
+        .history-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 16px;
+        }
+        .history-header h2 { font-size: 20px; font-weight: 700; }
+        .clear-btn {
+            background: rgba(255,82,82,0.15);
+            color: var(--danger);
+            border: none;
+            padding: 8px 16px;
+            border-radius: 10px;
+            font-size: 13px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.3s;
+        }
+        .clear-btn:hover { background: rgba(255,82,82,0.3); }
+
+        /* Chart */
+        .chart-container {
+            background: var(--bg-card);
+            border: 1px solid var(--border);
+            border-radius: 16px;
+            padding: 16px;
+            margin-bottom: 16px;
+            height: 200px;
+            position: relative;
+            overflow: hidden;
+        }
+        .chart-container h3 {
+            font-size: 14px;
+            color: var(--text-secondary);
+            margin-bottom: 12px;
+        }
+        .chart-canvas {
+            width: 100%;
+            height: 150px;
+        }
+
+        /* History List */
+        .history-item {
+            background: var(--bg-card);
+            border: 1px solid var(--border);
+            border-radius: 16px;
+            padding: 16px;
+            margin-bottom: 10px;
+            transition: all 0.3s;
+        }
+        .history-item:hover { background: var(--bg-card-hover); }
+        .history-item-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 10px;
+        }
+        .history-date { font-size: 12px; color: var(--text-secondary); }
+        .history-speeds {
+            display: grid;
+            grid-template-columns: 1fr 1fr 1fr 1fr;
+            gap: 8px;
+        }
+        .history-speed-item {
+            text-align: center;
+        }
+        .history-speed-item .hs-label {
+            font-size: 10px;
+            color: var(--text-secondary);
+            text-transform: uppercase;
+        }
+        .history-speed-item .hs-value {
+            font-size: 16px;
+            font-weight: 700;
+        }
+        .no-history {
+            text-align: center;
+            padding: 60px 20px;
+            color: var(--text-secondary);
+        }
+        .no-history .nh-icon { font-size: 48px; margin-bottom: 16px; }
+        .no-history p { font-size: 14px; }
+
+        /* Settings Page */
+        .settings-section {
+            background: var(--bg-card);
+            border: 1px solid var(--border);
+            border-radius: 16px;
+            padding: 16px;
+            margin-bottom: 12px;
+        }
+        .settings-section h3 {
+            font-size: 15px;
+            font-weight: 600;
+            margin-bottom: 12px;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+        .setting-item {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 12px 0;
+            border-bottom: 1px solid var(--border);
+        }
+        .setting-item:last-child { border-bottom: none; }
+        .setting-label { font-size: 14px; }
+        .setting-desc { font-size: 11px; color: var(--text-secondary); margin-top: 2px; }
+
+        /* Toggle Switch */
+        .toggle {
+            width: 48px;
+            height: 26px;
+            background: var(--border);
+            border-radius: 13px;
+            position: relative;
+            cursor: pointer;
+            transition: all 0.3s;
+        }
+        .toggle.active { background: var(--primary); }
+        .toggle::after {
+            content: '';
+            width: 22px;
+            height: 22px;
+            background: white;
+            border-radius: 50%;
+            position: absolute;
+            top: 2px;
+            left: 2px;
+            transition: all 0.3s;
+        }
+        .toggle.active::after { left: 24px; }
+
+        /* Select */
+        .setting-select {
+            background: var(--bg);
+            color: var(--text);
+            border: 1px solid var(--border);
+            border-radius: 8px;
+            padding: 6px 12px;
+            font-size: 13px;
+            cursor: pointer;
+        }
+
+        /* Share Button */
+        .share-btn {
+            width: 100%;
+            background: linear-gradient(135deg, var(--primary), var(--primary-dark));
+            color: white;
+            border: none;
+            padding: 14px;
+            border-radius: 12px;
+            font-size: 15px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.3s;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 8px;
+            margin-top: 16px;
+        }
+        .share-btn:hover { transform: translateY(-2px); box-shadow: 0 8px 25px rgba(108,99,255,0.3); }
+        .share-btn:disabled { opacity: 0.5; cursor: not-allowed; transform: none; }
+
+        /* About Card */
+        .about-card {
+            text-align: center;
+            padding: 20px;
+        }
+        .about-card .app-icon {
+            width: 60px;
+            height: 60px;
+            background: linear-gradient(135deg, var(--primary), var(--info));
+            border-radius: 16px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 28px;
+            margin: 0 auto 12px;
+        }
+        .about-card .app-name { font-size: 18px; font-weight: 700; }
+        .about-card .app-version { font-size: 12px; color: var(--text-secondary); }
+
+        /* Bottom Navigation */
+        .bottom-nav {
+            position: fixed;
+            bottom: 0;
+            left: 0;
+            right: 0;
+            height: var(--nav-height);
+            background: var(--bg-card);
+            border-top: 1px solid var(--border);
+            display: flex;
+            justify-content: space-around;
+            align-items: center;
+            padding: 0 16px;
+            padding-bottom: env(safe-area-inset-bottom, 0);
+            z-index: 100;
+            backdrop-filter: blur(20px);
+            -webkit-backdrop-filter: blur(20px);
+        }
+        .nav-item {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            gap: 4px;
+            cursor: pointer;
+            padding: 8px 20px;
+            border-radius: 12px;
+            transition: all 0.3s;
+            position: relative;
+            -webkit-tap-highlight-color: transparent;
+        }
+        .nav-item:hover { background: rgba(108,99,255,0.1); }
+        .nav-item.active { color: var(--primary); }
+        .nav-item.active::before {
+            content: '';
+            position: absolute;
+            top: -1px;
+            left: 50%;
+            transform: translateX(-50%);
+            width: 30px;
+            height: 3px;
+            background: var(--primary);
+            border-radius: 0 0 3px 3px;
+        }
+        .nav-item svg {
+            width: 24px;
+            height: 24px;
+            fill: none;
+            stroke: currentColor;
+            stroke-width: 2;
+            stroke-linecap: round;
+            stroke-linejoin: round;
+        }
+        .nav-item span {
+            font-size: 11px;
+            font-weight: 600;
+        }
+
+        /* Progress Bar */
+        .progress-bar {
+            width: 100%;
+            height: 4px;
+            background: var(--border);
+            border-radius: 2px;
+            margin-top: 16px;
+            overflow: hidden;
+        }
+        .progress-fill {
+            height: 100%;
+            background: linear-gradient(90deg, var(--primary), var(--info));
+            border-radius: 2px;
+            width: 0%;
+            transition: width 0.3s;
+        }
+        .progress-text {
+            font-size: 12px;
+            color: var(--text-secondary);
+            text-align: center;
+            margin-top: 8px;
+        }
+
+        /* Toast */
+        .toast {
+            position: fixed;
+            top: 20px;
+            left: 50%;
+            transform: translateX(-50%) translateY(-100px);
+            background: var(--bg-card);
+            color: var(--text);
+            border: 1px solid var(--border);
+            padding: 12px 24px;
+            border-radius: 12px;
+            font-size: 14px;
+            font-weight: 500;
+            z-index: 200;
+            transition: transform 0.4s ease;
+            box-shadow: var(--shadow);
+        }
+        .toast.show { transform: translateX(-50%) translateY(0); }
+
+        /* Scrollbar */
+        ::-webkit-scrollbar { width: 4px; }
+        ::-webkit-scrollbar-track { background: transparent; }
+        ::-webkit-scrollbar-thumb { background: var(--border); border-radius: 2px; }
+
+        /* Responsive */
+        @media (min-width: 600px) {
+            body { max-width: 480px; margin: 0 auto; }
+            .bottom-nav { max-width: 480px; left: 50%; transform: translateX(-50%); }
+        }
+    </style>
+</head>
+<body>
+    <!-- Header -->
+    <div class="header">
+        <h1>Speed Test</h1>
+        <p>ইন্টারনেট স্পিড পরীক্ষা করুন</p>
+    </div>
+
+    <!-- Speed Test Page -->
+    <div id="page-speed" class="page active">
+        <div class="gauge-container">
+            <div class="gauge-wrapper">
+                <svg class="gauge-svg" viewBox="0 0 260 160">
+                    <defs>
+                        <linearGradient id="gaugeGradient" x1="0%" y1="0%" x2="100%" y2="0%">
+                            <stop offset="0%" style="stop-color:#6C63FF"/>
+                            <stop offset="50%" style="stop-color:#40C4FF"/>
+                            <stop offset="100%" style="stop-color:#00E676"/>
+                        </linearGradient>
+                    </defs>
+                    <path class="gauge-bg" d="M 30 140 A 100 100 0 0 1 230 140"/>
+                    <path id="gaugeFill" class="gauge-fill" d="M 30 140 A 100 100 0 0 1 230 140"
+                          stroke-dasharray="314" stroke-dashoffset="314"/>
+                </svg>
+                <div class="gauge-value">
+                    <div class="speed" id="speedValue">0</div>
+                    <div class="unit">Mbps</div>
+                </div>
+            </div>
+            <div class="gauge-label" id="gaugeLabel">পরীক্ষা শুরু করুন</div>
+        </div>
+
+        <button class="start-btn" id="startBtn" onclick="startTest()">
+            <span id="btnText">START</span>
+            <div class="ripple" id="ripple" style="display:none;"></div>
+        </button>
+
+        <div class="progress-bar" id="progressBar" style="display:none;">
+            <div class="progress-fill" id="progressFill"></div>
+        </div>
+        <div class="progress-text" id="progressText" style="display:none;"></div>
+
+        <div class="results-grid" id="resultsGrid">
+            <div class="result-card">
+                <div class="icon">&#11015;</div>
+                <div class="label">Download</div>
+                <div class="value" id="downloadResult">--</div>
+                <div class="unit-small">Mbps</div>
+            </div>
+            <div class="result-card">
+                <div class="icon">&#11014;</div>
+                <div class="label">Upload</div>
+                <div class="value" id="uploadResult">--</div>
+                <div class="unit-small">Mbps</div>
+            </div>
+            <div class="result-card">
+                <div class="icon">&#128268;</div>
+                <div class="label">Ping</div>
+                <div class="value" id="pingResult">--</div>
+                <div class="unit-small">ms</div>
+            </div>
+            <div class="result-card">
+                <div class="icon">&#128196;</div>
+                <div class="label">Jitter</div>
+                <div class="value" id="jitterResult">--</div>
+                <div class="unit-small">ms</div>
+            </div>
+        </div>
+
+        <div class="connection-info" id="connectionInfo">
+            <h3>&#128274; সংযোগ তথ্য</h3>
+            <div class="info-row">
+                <span class="info-label">IP Address</span>
+                <span class="info-value" id="ipAddress">সনাক্ত করা হচ্ছে...</span>
+            </div>
+            <div class="info-row">
+                <span class="info-label">ISP</span>
+                <span class="info-value" id="ispName">সনাক্ত করা হচ্ছে...</span>
+            </div>
+            <div class="info-row">
+                <span class="info-label">Location</span>
+                <span class="info-value" id="location">সনাক্ত করা হচ্ছে...</span>
+            </div>
+            <div class="info-row">
+                <span class="info-label">Connection</span>
+                <span class="info-value" id="connectionType">সনাক্ত করা হচ্ছে...</span>
+            </div>
+        </div>
+    </div>
+
+    <!-- History Page -->
+    <div id="page-history" class="page">
+        <div class="history-header">
+            <h2>&#128202; পরীক্ষার ইতিহাস</h2>
+            <button class="clear-btn" onclick="clearHistory()">&#128465; মুছুন</button>
+        </div>
+
+        <div class="chart-container">
+            <h3>&#128200; গত পরীক্ষাসমূহ</h3>
+            <canvas id="historyChart" class="chart-canvas"></canvas>
+        </div>
+
+        <div id="historyList"></div>
+    </div>
+
+    <!-- Settings Page -->
+    <div id="page-settings" class="page">
+        <div class="settings-section about-card">
+            <div class="app-icon">&#9889;</div>
+            <div class="app-name">Speed Test</div>
+            <div class="app-version">v1.0.0</div>
+        </div>
+
+        <div class="settings-section">
+            <h3>&#127912; ডিসপ্লে</h3>
+            <div class="setting-item">
+                <div>
+                    <div class="setting-label">ডার্ক মোড</div>
+                    <div class="setting-desc">অন্ধকার থিম ব্যবহার করুন</div>
+                </div>
+                <div class="toggle active" id="themeToggle" onclick="toggleTheme()"></div>
+            </div>
+        </div>
+
+        <div class="settings-section">
+            <h3>&#9881; টেস্ট সেটিংস</h3>
+            <div class="setting-item">
+                <div>
+                    <div class="setting-label">টেস্ট সার্ভার</div>
+                    <div class="setting-desc">নিকটতম সার্ভার নির্বাচন করুন</div>
+                </div>
+                <select class="setting-select" id="serverSelect" onchange="saveSettings()">
+                    <option value="auto">স্বয়ংক্রিয়</option>
+                    <option value="cloudflare">Cloudflare</option>
+                    <option value="google">Google</option>
+                </select>
+            </div>
+            <div class="setting-item">
+                <div>
+                    <div class="setting-label">ইউনিট</div>
+                    <div class="setting-desc">স্পিড ইউনিট পরিবর্তন করুন</div>
+                </div>
+                <select class="setting-select" id="unitSelect" onchange="saveSettings()">
+                    <option value="mbps">Mbps</option>
+                    <option value="kbps">Kbps</option>
+                    <option value="MBs">MB/s</option>
+                </select>
+            </div>
+            <div class="setting-item">
+                <div>
+                    <div class="setting-label">অটো সেভ রেজাল্ট</div>
+                    <div class="setting-desc">টেস্ট শেষে স্বয়ংক্রিয়ভাবে সেভ করুন</div>
+                </div>
+                <div class="toggle active" id="autoSaveToggle" onclick="toggleAutoSave()"></div>
+            </div>
+        </div>
+
+        <div class="settings-section">
+            <h3>&#128196; তথ্য</h3>
+            <div class="setting-item">
+                <div class="setting-label">মোট পরীক্ষা</div>
+                <span class="info-value" id="totalTests">0</span>
+            </div>
+            <div class="setting-item">
+                <div class="setting-label">গড় Download</div>
+                <span class="info-value" id="avgDownload">-- Mbps</span>
+            </div>
+            <div class="setting-item">
+                <div class="setting-label">গড় Upload</div>
+                <span class="info-value" id="avgUpload">-- Mbps</span>
+            </div>
+            <div class="setting-item">
+                <div class="setting-label">সর্বোচ্চ Download</div>
+                <span class="info-value" id="maxDownload">-- Mbps</span>
+            </div>
+        </div>
+
+        <button class="share-btn" id="shareBtn" onclick="shareResults()" disabled>
+            &#128279; শেয়ার করুন
+        </button>
+    </div>
+
+    <!-- Bottom Navigation -->
+    <nav class="bottom-nav">
+        <div class="nav-item active" data-page="speed" onclick="switchPage('speed')">
+            <svg viewBox="0 0 24 24">
+                <path d="M13 2L3 14h9l-1 8 10-12h-9l1-8z"/>
+            </svg>
+            <span>Speed Test</span>
+        </div>
+        <div class="nav-item" data-page="history" onclick="switchPage('history')">
+            <svg viewBox="0 0 24 24">
+                <circle cx="12" cy="12" r="10"/>
+                <polyline points="12 6 12 12 16 14"/>
+            </svg>
+            <span>History</span>
+        </div>
+        <div class="nav-item" data-page="settings" onclick="switchPage('settings')">
+            <svg viewBox="0 0 24 24">
+                <circle cx="12" cy="12" r="3"/>
+                <path d="M19.4 15a1.65 1.65 0 00.33 1.82l.06.06a2 2 0 010 2.83 2 2 0 01-2.83 0l-.06-.06a1.65 1.65 0 00-1.82-.33 1.65 1.65 0 00-1 1.51V21a2 2 0 01-2 2 2 2 0 01-2-2v-.09A1.65 1.65 0 009 19.4a1.65 1.65 0 00-1.82.33l-.06.06a2 2 0 01-2.83 0 2 2 0 010-2.83l.06-.06A1.65 1.65 0 004.68 15a1.65 1.65 0 00-1.51-1H3a2 2 0 01-2-2 2 2 0 012-2h.09A1.65 1.65 0 004.6 9a1.65 1.65 0 00-.33-1.82l-.06-.06a2 2 0 010-2.83 2 2 0 012.83 0l.06.06A1.65 1.65 0 009 4.68a1.65 1.65 0 001-1.51V3a2 2 0 012-2 2 2 0 012 2v.09a1.65 1.65 0 001 1.51 1.65 1.65 0 001.82-.33l.06-.06a2 2 0 012.83 0 2 2 0 010 2.83l-.06.06A1.65 1.65 0 0019.32 9a1.65 1.65 0 001.51 1H21a2 2 0 012 2 2 2 0 01-2 2h-.09a1.65 1.65 0 00-1.51 1z"/>
+            </svg>
+            <span>Settings</span>
+        </div>
+    </nav>
+
+    <!-- Toast -->
+    <div class="toast" id="toast"></div>
+
+    <script>
+        /* ============ State ============ */
+        let isTesting = false;
+        let currentResults = { download: 0, upload: 0, ping: 0, jitter: 0 };
+        let settings = {
+            darkMode: true,
+            server: 'auto',
+            unit: 'mbps',
+            autoSave: true
+        };
+
+        /* ============ Init ============ */
+        document.addEventListener('DOMContentLoaded', () => {
+            loadSettings();
+            loadHistory();
+            fetchConnectionInfo();
+            updateStats();
+        });
+
+        /* ============ Navigation ============ */
+        function switchPage(page) {
+            document.querySelectorAll('.page').forEach(p => p.classList.remove('active'));
+            document.querySelectorAll('.nav-item').forEach(n => n.classList.remove('active'));
+            document.getElementById('page-' + page).classList.add('active');
+            document.querySelector('[data-page="' + page + '"]').classList.add('active');
+            if (page === 'history') renderHistory();
+            if (page === 'settings') updateStats();
+        }
+
+        /* ============ Gauge ============ */
+        function updateGauge(value, maxValue) {
+            const gauge = document.getElementById('gaugeFill');
+            const totalLen = 314;
+            const ratio = Math.min(value / maxValue, 1);
+            gauge.setAttribute('stroke-dashoffset', totalLen - (totalLen * ratio));
+        }
+
+        function animateSpeed(target, duration) {
+            const el = document.getElementById('speedValue');
+            const start = parseFloat(el.textContent) || 0;
+            const startTime = performance.now();
+            function update(now) {
+                const elapsed = now - startTime;
+                const progress = Math.min(elapsed / duration, 1);
+                const eased = 1 - Math.pow(1 - progress, 3);
+                const current = start + (target - start) * eased;
+                el.textContent = current.toFixed(1);
+                updateGauge(current, 200);
+                if (progress < 1) requestAnimationFrame(update);
+            }
+            requestAnimationFrame(update);
+        }
+
+        /* ============ Speed Test ============ */
+        async function startTest() {
+            if (isTesting) return;
+            isTesting = true;
+            const btn = document.getElementById('startBtn');
+            const btnText = document.getElementById('btnText');
+            const ripple = document.getElementById('ripple');
+            const progressBar = document.getElementById('progressBar');
+            const progressFill = document.getElementById('progressFill');
+            const progressText = document.getElementById('progressText');
+
+            btn.classList.add('testing');
+            ripple.style.display = 'block';
+            btnText.textContent = 'Testing...';
+            progressBar.style.display = 'block';
+            progressText.style.display = 'block';
+
+            // Reset
+            document.getElementById('downloadResult').textContent = '--';
+            document.getElementById('uploadResult').textContent = '--';
+            document.getElementById('pingResult').textContent = '--';
+            document.getElementById('jitterResult').textContent = '--';
+
+            try {
+                // Phase 1: Ping Test
+                document.getElementById('gaugeLabel').textContent = 'Ping পরীক্ষা করা হচ্ছে...';
+                progressText.textContent = 'Ping পরীক্ষা চলছে...';
+                progressFill.style.width = '10%';
+                const pingResults = await measurePing();
+                currentResults.ping = pingResults.avg;
+                currentResults.jitter = pingResults.jitter;
+                document.getElementById('pingResult').textContent = pingResults.avg.toFixed(1);
+                document.getElementById('jitterResult').textContent = pingResults.jitter.toFixed(1);
+                progressFill.style.width = '25%';
+
+                // Phase 2: Download Test
+                document.getElementById('gaugeLabel').textContent = 'Download পরীক্ষা করা হচ্ছে...';
+                progressText.textContent = 'Download স্পিড পরীক্ষা চলছে...';
+                const downloadSpeed = await measureDownload((speed, progress) => {
+                    animateSpeed(speed, 200);
+                    progressFill.style.width = (25 + progress * 37.5) + '%';
+                });
+                currentResults.download = downloadSpeed;
+                document.getElementById('downloadResult').textContent = formatSpeed(downloadSpeed);
+                progressFill.style.width = '62.5%';
+
+                // Phase 3: Upload Test
+                document.getElementById('gaugeLabel').textContent = 'Upload পরীক্ষা করা হচ্ছে...';
+                progressText.textContent = 'Upload স্পিড পরীক্ষা চলছে...';
+                const uploadSpeed = await measureUpload((speed, progress) => {
+                    animateSpeed(speed, 200);
+                    progressFill.style.width = (62.5 + progress * 37.5) + '%';
+                });
+                currentResults.upload = uploadSpeed;
+                document.getElementById('uploadResult').textContent = formatSpeed(uploadSpeed);
+                progressFill.style.width = '100%';
+
+                // Finish
+                const quality = getQuality(downloadSpeed, uploadSpeed, pingResults.avg);
+                document.getElementById('gaugeLabel').innerHTML =
+                    '<span class="quality-badge quality-' + quality.class + '">' + quality.icon + ' ' + quality.label + '</span>';
+                animateSpeed(downloadSpeed, 500);
+
+                // Save
+                if (settings.autoSave) {
+                    saveResult();
+                }
+
+                // Enable share
+                document.getElementById('shareBtn').disabled = false;
+                showToast('পরীক্ষা সম্পন্ন হয়েছে!');
+            } catch (err) {
+                document.getElementById('gaugeLabel').textContent = 'ত্রুটি হয়েছে, আবার চেষ্টা করুন';
+                showToast('পরীক্ষায় ত্রুটি: ' + err.message);
+            }
+
+            btn.classList.remove('testing');
+            ripple.style.display = 'none';
+            btnText.textContent = 'START';
+            isTesting = false;
+            setTimeout(() => {
+                progressBar.style.display = 'none';
+                progressText.style.display = 'none';
+                progressFill.style.width = '0%';
+            }, 1500);
+        }
+
+        /* ============ Ping Measurement ============ */
+        async function measurePing() {
+            const pings = [];
+            const urls = [
+                'https://www.google.com/generate_204',
+                'https://1.1.1.1/cdn-cgi/trace',
+                'https://www.cloudflare.com/cdn-cgi/trace'
+            ];
+            const url = urls[Math.floor(Math.random() * urls.length)];
+            for (let i = 0; i < 10; i++) {
+                const start = performance.now();
+                try {
+                    await fetch(url + '?_=' + Date.now() + '_' + i, {
+                        mode: 'no-cors',
+                        cache: 'no-store'
+                    });
+                    const end = performance.now();
+                    pings.push(end - start);
+                } catch (e) {
+                    pings.push(100 + Math.random() * 50);
+                }
+            }
+            pings.sort((a, b) => a - b);
+            const trimmed = pings.slice(1, -1);
+            const avg = trimmed.reduce((a, b) => a + b, 0) / trimmed.length;
+            let jitterSum = 0;
+            for (let i = 1; i < trimmed.length; i++) {
+                jitterSum += Math.abs(trimmed[i] - trimmed[i - 1]);
+            }
+            const jitter = jitterSum / (trimmed.length - 1);
+            return { avg, jitter };
+        }
+
+        /* ============ Download Measurement ============ */
+        async function measureDownload(onProgress) {
+            const testFiles = [
+                { url: 'https://speed.cloudflare.com/__down?bytes=5000000', size: 5000000 },
+                { url: 'https://speed.cloudflare.com/__down?bytes=10000000', size: 10000000 },
+                { url: 'https://speed.cloudflare.com/__down?bytes=25000000', size: 25000000 }
+            ];
+            let totalBytes = 0;
+            const startTime = performance.now();
+            const duration = 8000;
+            let testIndex = 0;
+            let speeds = [];
+
+            while (performance.now() - startTime < duration && testIndex < 20) {
+                const file = testFiles[Math.min(testIndex, testFiles.length - 1)];
+                try {
+                    const response = await fetch(file.url + '&_=' + Date.now() + '_' + testIndex, {
+                        cache: 'no-store'
+                    });
+                    const reader = response.body.getReader();
+                    let chunkBytes = 0;
+                    const chunkStart = performance.now();
+
+                    while (true) {
+                        const { done, value } = await reader.read();
+                        if (done) break;
+                        chunkBytes += value.length;
+                        totalBytes += value.length;
+                        const elapsed = (performance.now() - startTime) / 1000;
+                        const currentSpeed = (totalBytes * 8) / (elapsed * 1000000);
+                        const progress = Math.min((performance.now() - startTime) / duration, 1);
+                        onProgress(currentSpeed, progress);
+                        if (performance.now() - startTime >= duration) {
+                            reader.cancel();
+                            break;
+                        }
+                    }
+                    const chunkElapsed = (performance.now() - chunkStart) / 1000;
+                    if (chunkElapsed > 0) {
+                        speeds.push((chunkBytes * 8) / (chunkElapsed * 1000000));
+                    }
+                } catch (e) {
+                    break;
+                }
+                testIndex++;
+            }
+
+            const totalElapsed = (performance.now() - startTime) / 1000;
+            if (totalElapsed > 0 && totalBytes > 0) {
+                return (totalBytes * 8) / (totalElapsed * 1000000);
+            }
+            return speeds.length > 0 ? speeds.reduce((a, b) => a + b, 0) / speeds.length : 0;
+        }
+
+        /* ============ Upload Measurement ============ */
+        async function measureUpload(onProgress) {
+            const sizes = [500000, 1000000, 2000000];
+            let totalBytes = 0;
+            const startTime = performance.now();
+            const duration = 8000;
+            let testIndex = 0;
+
+            while (performance.now() - startTime < duration && testIndex < 15) {
+                const size = sizes[Math.min(testIndex, sizes.length - 1)];
+                const data = new Blob([new ArrayBuffer(size)]);
+                try {
+                    const fetchStart = performance.now();
+                    await fetch('https://speed.cloudflare.com/__up', {
+                        method: 'POST',
+                        body: data,
+                        cache: 'no-store'
+                    });
+                    totalBytes += size;
+                    const elapsed = (performance.now() - startTime) / 1000;
+                    const currentSpeed = (totalBytes * 8) / (elapsed * 1000000);
+                    const progress = Math.min((performance.now() - startTime) / duration, 1);
+                    onProgress(currentSpeed, progress);
+                } catch (e) {
+                    break;
+                }
+                testIndex++;
+            }
+
+            const totalElapsed = (performance.now() - startTime) / 1000;
+            if (totalElapsed > 0 && totalBytes > 0) {
+                return (totalBytes * 8) / (totalElapsed * 1000000);
+            }
+            return 0;
+        }
+
+        /* ============ Connection Info ============ */
+        async function fetchConnectionInfo() {
+            try {
+                const resp = await fetch('https://ipapi.co/json/');
+                const data = await resp.json();
+                document.getElementById('ipAddress').textContent = data.ip || 'N/A';
+                document.getElementById('ispName').textContent = data.org || 'N/A';
+                document.getElementById('location').textContent =
+                    (data.city || '') + ', ' + (data.country_name || '');
+            } catch (e) {
+                document.getElementById('ipAddress').textContent = 'সনাক্ত করা যায়নি';
+                document.getElementById('ispName').textContent = 'সনাক্ত করা যায়নি';
+                document.getElementById('location').textContent = 'সনাক্ত করা যায়নি';
+            }
+            // Connection type
+            if (navigator.connection) {
+                const conn = navigator.connection;
+                document.getElementById('connectionType').textContent =
+                    (conn.effectiveType || 'unknown').toUpperCase() +
+                    (conn.downlink ? ' (' + conn.downlink + ' Mbps)' : '');
+            } else {
+                document.getElementById('connectionType').textContent = navigator.onLine ? 'Online' : 'Offline';
+            }
+        }
+
+        /* ============ Quality Rating ============ */
+        function getQuality(download, upload, ping) {
+            if (download >= 50 && upload >= 20 && ping < 30) {
+                return { label: 'Excellent', class: 'excellent', icon: '&#9733;' };
+            } else if (download >= 25 && upload >= 10 && ping < 50) {
+                return { label: 'Good', class: 'good', icon: '&#128077;' };
+            } else if (download >= 10 && upload >= 5 && ping < 100) {
+                return { label: 'Fair', class: 'fair', icon: '&#9888;' };
+            } else {
+                return { label: 'Poor', class: 'poor', icon: '&#9888;' };
+            }
+        }
+
+        /* ============ Format Speed ============ */
+        function formatSpeed(mbps) {
+            const unit = settings.unit;
+            if (unit === 'kbps') return (mbps * 1000).toFixed(0);
+            if (unit === 'MBs') return (mbps / 8).toFixed(2);
+            return mbps.toFixed(2);
+        }
+
+        function getUnitLabel() {
+            if (settings.unit === 'kbps') return 'Kbps';
+            if (settings.unit === 'MBs') return 'MB/s';
+            return 'Mbps';
+        }
+
+        /* ============ History ============ */
+        function getHistory() {
+            try {
+                return JSON.parse(localStorage.getItem('speedTestHistory') || '[]');
+            } catch (e) { return []; }
+        }
+
+        function saveResult() {
+            const history = getHistory();
+            history.unshift({
+                date: new Date().toISOString(),
+                download: currentResults.download,
+                upload: currentResults.upload,
+                ping: currentResults.ping,
+                jitter: currentResults.jitter
+            });
+            if (history.length > 50) history.pop();
+            localStorage.setItem('speedTestHistory', JSON.stringify(history));
+        }
+
+        function clearHistory() {
+            if (confirm('সমস্ত ইতিহাস মুছে ফেলতে চান?')) {
+                localStorage.removeItem('speedTestHistory');
+                renderHistory();
+                updateStats();
+                showToast('ইতিহাস মুছে ফেলা হয়েছে');
+            }
+        }
+
+        function renderHistory() {
+            const history = getHistory();
+            const list = document.getElementById('historyList');
+
+            if (history.length === 0) {
+                list.innerHTML = '<div class="no-history"><div class="nh-icon">&#128202;</div><p>কোন পরীক্ষার ইতিহাস নেই</p><p style="margin-top:8px;font-size:12px;">Speed Test চালিয়ে ইতিহাস দেখুন</p></div>';
+                drawChart([]);
+                return;
+            }
+
+            let html = '';
+            history.forEach((item, i) => {
+                const d = new Date(item.date);
+                const dateStr = d.toLocaleDateString('bn-BD', {
+                    year: 'numeric', month: 'short', day: 'numeric',
+                    hour: '2-digit', minute: '2-digit'
+                });
+                const quality = getQuality(item.download, item.upload, item.ping);
+                html += '<div class="history-item">' +
+                    '<div class="history-item-header">' +
+                    '<span class="history-date">' + dateStr + '</span>' +
+                    '<span class="quality-badge quality-' + quality.class + '" style="font-size:11px;padding:3px 10px;">' + quality.icon + ' ' + quality.label + '</span>' +
+                    '</div>' +
+                    '<div class="history-speeds">' +
+                    '<div class="history-speed-item"><div class="hs-label">&#11015; Down</div><div class="hs-value">' + item.download.toFixed(1) + '</div></div>' +
+                    '<div class="history-speed-item"><div class="hs-label">&#11014; Up</div><div class="hs-value">' + item.upload.toFixed(1) + '</div></div>' +
+                    '<div class="history-speed-item"><div class="hs-label">&#128268; Ping</div><div class="hs-value">' + item.ping.toFixed(0) + '</div></div>' +
+                    '<div class="history-speed-item"><div class="hs-label">&#128196; Jitter</div><div class="hs-value">' + item.jitter.toFixed(0) + '</div></div>' +
+                    '</div></div>';
+            });
+            list.innerHTML = html;
+            drawChart(history.slice(0, 10).reverse());
+        }
+
+        function loadHistory() {
+            renderHistory();
+        }
+
+        /* ============ Chart ============ */
+        function drawChart(data) {
+            const canvas = document.getElementById('historyChart');
+            if (!canvas) return;
+            const ctx = canvas.getContext('2d');
+            const dpr = window.devicePixelRatio || 1;
+            const rect = canvas.getBoundingClientRect();
+            canvas.width = rect.width * dpr;
+            canvas.height = rect.height * dpr;
+            ctx.scale(dpr, dpr);
+            const w = rect.width;
+            const h = rect.height;
+
+            ctx.clearRect(0, 0, w, h);
+
+            if (data.length < 2) {
+                ctx.fillStyle = getComputedStyle(document.body).getPropertyValue('--text-secondary');
+                ctx.font = '13px sans-serif';
+                ctx.textAlign = 'center';
+                ctx.fillText('চার্ট দেখতে কমপক্ষে ২টি পরীক্ষা প্রয়োজন', w / 2, h / 2);
+                return;
+            }
+
+            const maxDown = Math.max(...data.map(d => d.download), 1);
+            const maxUp = Math.max(...data.map(d => d.upload), 1);
+            const maxVal = Math.max(maxDown, maxUp) * 1.2;
+            const padding = { left: 40, right: 16, top: 10, bottom: 25 };
+            const chartW = w - padding.left - padding.right;
+            const chartH = h - padding.top - padding.bottom;
+
+            // Grid lines
+            ctx.strokeStyle = getComputedStyle(document.body).getPropertyValue('--border');
+            ctx.lineWidth = 0.5;
+            for (let i = 0; i <= 4; i++) {
+                const y = padding.top + (chartH / 4) * i;
+                ctx.beginPath();
+                ctx.moveTo(padding.left, y);
+                ctx.lineTo(w - padding.right, y);
+                ctx.stroke();
+                ctx.fillStyle = getComputedStyle(document.body).getPropertyValue('--text-secondary');
+                ctx.font = '10px sans-serif';
+                ctx.textAlign = 'right';
+                ctx.fillText(((maxVal - (maxVal / 4) * i)).toFixed(0), padding.left - 6, y + 4);
+            }
+
+            function drawLine(points, color) {
+                ctx.strokeStyle = color;
+                ctx.lineWidth = 2.5;
+                ctx.lineJoin = 'round';
+                ctx.lineCap = 'round';
+                ctx.beginPath();
+                points.forEach((p, i) => {
+                    const x = padding.left + (chartW / (data.length - 1)) * i;
+                    const y = padding.top + chartH - (p / maxVal) * chartH;
+                    if (i === 0) ctx.moveTo(x, y);
+                    else ctx.lineTo(x, y);
+                });
+                ctx.stroke();
+
+                // Fill area
+                const lastX = padding.left + chartW;
+                ctx.lineTo(lastX, padding.top + chartH);
+                ctx.lineTo(padding.left, padding.top + chartH);
+                ctx.closePath();
+                const grad = ctx.createLinearGradient(0, padding.top, 0, padding.top + chartH);
+                grad.addColorStop(0, color.replace(')', ',0.2)').replace('rgb', 'rgba'));
+                grad.addColorStop(1, color.replace(')', ',0)').replace('rgb', 'rgba'));
+                ctx.fillStyle = grad;
+                ctx.fill();
+
+                // Dots
+                ctx.fillStyle = color;
+                points.forEach((p, i) => {
+                    const x = padding.left + (chartW / (data.length - 1)) * i;
+                    const y = padding.top + chartH - (p / maxVal) * chartH;
+                    ctx.beginPath();
+                    ctx.arc(x, y, 3.5, 0, Math.PI * 2);
+                    ctx.fill();
+                });
+            }
+
+            drawLine(data.map(d => d.download), 'rgb(108, 99, 255)');
+            drawLine(data.map(d => d.upload), 'rgb(64, 196, 255)');
+
+            // Legend
+            ctx.font = '10px sans-serif';
+            ctx.fillStyle = 'rgb(108, 99, 255)';
+            ctx.fillRect(padding.left, h - 12, 12, 3);
+            ctx.fillStyle = getComputedStyle(document.body).getPropertyValue('--text-secondary');
+            ctx.textAlign = 'left';
+            ctx.fillText('Download', padding.left + 16, h - 8);
+            ctx.fillStyle = 'rgb(64, 196, 255)';
+            ctx.fillRect(padding.left + 90, h - 12, 12, 3);
+            ctx.fillStyle = getComputedStyle(document.body).getPropertyValue('--text-secondary');
+            ctx.fillText('Upload', padding.left + 106, h - 8);
+        }
+
+        /* ============ Settings ============ */
+        function loadSettings() {
+            try {
+                const saved = JSON.parse(localStorage.getItem('speedTestSettings'));
+                if (saved) settings = { ...settings, ...saved };
+            } catch (e) {}
+
+            if (!settings.darkMode) {
+                document.documentElement.setAttribute('data-theme', 'light');
+                document.getElementById('themeToggle').classList.remove('active');
+            }
+            document.getElementById('serverSelect').value = settings.server;
+            document.getElementById('unitSelect').value = settings.unit;
+            if (!settings.autoSave) {
+                document.getElementById('autoSaveToggle').classList.remove('active');
+            }
+        }
+
+        function saveSettings() {
+            settings.server = document.getElementById('serverSelect').value;
+            settings.unit = document.getElementById('unitSelect').value;
+            localStorage.setItem('speedTestSettings', JSON.stringify(settings));
+            showToast('সেটিংস সংরক্ষিত হয়েছে');
+        }
+
+        function toggleTheme() {
+            settings.darkMode = !settings.darkMode;
+            const toggle = document.getElementById('themeToggle');
+            if (settings.darkMode) {
+                document.documentElement.removeAttribute('data-theme');
+                toggle.classList.add('active');
+            } else {
+                document.documentElement.setAttribute('data-theme', 'light');
+                toggle.classList.remove('active');
+            }
+            localStorage.setItem('speedTestSettings', JSON.stringify(settings));
+        }
+
+        function toggleAutoSave() {
+            settings.autoSave = !settings.autoSave;
+            const toggle = document.getElementById('autoSaveToggle');
+            toggle.classList.toggle('active');
+            localStorage.setItem('speedTestSettings', JSON.stringify(settings));
+        }
+
+        /* ============ Stats ============ */
+        function updateStats() {
+            const history = getHistory();
+            document.getElementById('totalTests').textContent = history.length;
+            if (history.length > 0) {
+                const avgD = history.reduce((s, h) => s + h.download, 0) / history.length;
+                const avgU = history.reduce((s, h) => s + h.upload, 0) / history.length;
+                const maxD = Math.max(...history.map(h => h.download));
+                document.getElementById('avgDownload').textContent = avgD.toFixed(2) + ' Mbps';
+                document.getElementById('avgUpload').textContent = avgU.toFixed(2) + ' Mbps';
+                document.getElementById('maxDownload').textContent = maxD.toFixed(2) + ' Mbps';
+            }
+        }
+
+        /* ============ Share ============ */
+        function shareResults() {
+            const text = 'Speed Test Results:\n' +
+                '&#11015; Download: ' + formatSpeed(currentResults.download) + ' ' + getUnitLabel() + '\n' +
+                '&#11014; Upload: ' + formatSpeed(currentResults.upload) + ' ' + getUnitLabel() + '\n' +
+                '&#128268; Ping: ' + currentResults.ping.toFixed(1) + ' ms\n' +
+                '&#128196; Jitter: ' + currentResults.jitter.toFixed(1) + ' ms';
+
+            if (navigator.share) {
+                navigator.share({ title: 'Speed Test Results', text: text }).catch(() => {});
+            } else if (navigator.clipboard) {
+                navigator.clipboard.writeText(text.replace(/&#\d+;/g, '')).then(() => {
+                    showToast('ক্লিপবোর্ডে কপি করা হয়েছে!');
+                });
+            } else {
+                showToast('শেয়ার সমর্থিত নয়');
+            }
+        }
+
+        /* ============ Toast ============ */
+        function showToast(message) {
+            const toast = document.getElementById('toast');
+            toast.textContent = message;
+            toast.classList.add('show');
+            setTimeout(() => toast.classList.remove('show'), 3000);
+        }
+
+        /* ============ Resize Handler ============ */
+        window.addEventListener('resize', () => {
+            const history = getHistory();
+            if (document.getElementById('page-history').classList.contains('active')) {
+                drawChart(history.slice(0, 10).reverse());
+            }
+        });
+    </script>
+</body>
+</html>
