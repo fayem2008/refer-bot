@@ -1287,21 +1287,25 @@
                 document.getElementById('avgDownload').textContent = avgD.toFixed(2) + ' Mbps';
                 document.getElementById('avgUpload').textContent = avgU.toFixed(2) + ' Mbps';
                 document.getElementById('maxDownload').textContent = maxD.toFixed(2) + ' Mbps';
+            } else {
+                document.getElementById('avgDownload').textContent = '-- Mbps';
+                document.getElementById('avgUpload').textContent = '-- Mbps';
+                document.getElementById('maxDownload').textContent = '-- Mbps';
             }
         }
 
         /* ============ Share ============ */
         function shareResults() {
             const text = 'Speed Test Results:\n' +
-                '&#11015; Download: ' + formatSpeed(currentResults.download) + ' ' + getUnitLabel() + '\n' +
-                '&#11014; Upload: ' + formatSpeed(currentResults.upload) + ' ' + getUnitLabel() + '\n' +
-                '&#128268; Ping: ' + currentResults.ping.toFixed(1) + ' ms\n' +
-                '&#128196; Jitter: ' + currentResults.jitter.toFixed(1) + ' ms';
+                '\u2B07 Download: ' + formatSpeed(currentResults.download) + ' ' + getUnitLabel() + '\n' +
+                '\u2B06 Upload: ' + formatSpeed(currentResults.upload) + ' ' + getUnitLabel() + '\n' +
+                '\uD83D\uDD0C Ping: ' + currentResults.ping.toFixed(1) + ' ms\n' +
+                '\uD83D\uDCC4 Jitter: ' + currentResults.jitter.toFixed(1) + ' ms';
 
             if (navigator.share) {
                 navigator.share({ title: 'Speed Test Results', text: text }).catch(() => {});
             } else if (navigator.clipboard) {
-                navigator.clipboard.writeText(text.replace(/&#\d+;/g, '')).then(() => {
+                navigator.clipboard.writeText(text).then(() => {
                     showToast('ক্লিপবোর্ডে কপি করা হয়েছে!');
                 });
             } else {
